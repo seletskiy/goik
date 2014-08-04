@@ -4,42 +4,24 @@ import (
 	"bufio"
 	"fmt"
 	"os"
+	"os/exec"
 	"regexp"
 	"strings"
 	"time"
 )
 
 var (
-	reBegin     = regexp.MustCompile(`BEGIN:VCALENDAR`)
-	reEnd       = regexp.MustCompile(`END:VCALENDAR`)
 	reTimeStart = regexp.MustCompile(`DTSTART:(.+)`)
-	reTimeEnd   = regexp.MustCompile(`DTEND:(.+)`)
 	reOrganizer = regexp.MustCompile(`ORGANIZER:(?:MAILTO:)?(.+)`)
 	reSummary   = regexp.MustCompile(`SUMMARY:(.+)`)
 )
 
 func main() {
-	var (
-		reader = bufio.NewReader(os.Stdin)
-		buffer = ""
-		line   = ""
-	)
+	reader := bufio.NewReader(os.Stdin)
+	buffer := ""
 
 	for {
-		for {
-			partialLine, err := reader.ReadString('\n')
-			if err != nil {
-				break
-			}
-
-			if partialLine[0] != ' ' && buffer != "" {
-				line, buffer = strings.TrimSpace(buffer), partialLine
-				break
-			} else {
-				buffer += partialLine
-			}
-		}
-
+		line := readBreakedLine(reader, &buffer)
 		if line == "" {
 			break
 		}
@@ -52,7 +34,53 @@ func main() {
 				panic(err)
 			}
 
-			fmt.Println(t)
+			showCal(t)
+
+			fmt.Println("Time ::", t.In(time.Local).Format("15:04"),
+				"(in local time)")
+		case reOrganizer.MatchString(line):
+			matches := reOrganizer.FindStringSubmatch(line)
+			fmt.Println("Organizer ::", matches[1])
+		case reSummary.MatchString(line):
+			matches := reSummary.FindStringSubmatch(line)
+			fmt.Println("Summary ::", matches[1])
+
 		}
 	}
+}
+
+func readBreakedLine(reader *bufio.Reader, buffer *string) (line string) {
+	for {
+		partialLine, err := reader.ReadString('\n')
+		if err != nil || partialLine[0] != ' ' && *buffer != "" {
+			line = strings.TrimSpace(*buffer)
+			*buffer = strings.TrimSpace(partialLine)
+			break
+		} else {
+			if partialLine[0] == ' ' {
+				partialLine = partialLine[1:]
+			}
+			*buffer += partialLine
+		}
+	}
+
+	return line
+}
+
+func showCal(datetime time.Time) {
+	cmd := exec.Command("cal",
+		fmt.Sprintf("%d", datetime.Day()),
+		fmt.Sprintf("%d", datetime.Month()),
+		fmt.Sprintf("%d", datetime.Year()))
+
+	cmd.Stdin = os.Stdin
+	cmd.Stdout = os.Stdout
+	cmd.Stderr = os.Stderr
+
+	err := cmd.Run()
+	if err != nil {
+		panic(err)
+	}
+
+	fmt.Println()
 }
