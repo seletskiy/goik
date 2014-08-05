@@ -3,6 +3,7 @@ package main
 import (
 	"bufio"
 	"fmt"
+	"io/ioutil"
 	"os"
 	"os/exec"
 	"regexp"
@@ -69,18 +70,27 @@ func readBreakedLine(reader *bufio.Reader, buffer *string) (line string) {
 
 func showCal(datetime time.Time) {
 	cmd := exec.Command("cal",
+		"--color=never",
 		fmt.Sprintf("%d", datetime.Day()),
 		fmt.Sprintf("%d", datetime.Month()),
 		fmt.Sprintf("%d", datetime.Year()))
 
 	cmd.Stdin = os.Stdin
-	cmd.Stdout = os.Stdout
 	cmd.Stderr = os.Stderr
-
-	err := cmd.Run()
+	stdout, _ := cmd.StdoutPipe()
+	err := cmd.Start()
 	if err != nil {
 		panic(err)
 	}
 
-	fmt.Println()
+	cal, err := ioutil.ReadAll(stdout)
+	if err != nil {
+		panic(err)
+	}
+
+	reNewLine := regexp.MustCompile(`(?m)^`)
+	out := reNewLine.ReplaceAllString(string(cal), " ")
+	reDay := regexp.MustCompile(fmt.Sprintf(`(^| )%2d( |$)`, datetime.Day()))
+	out = reDay.ReplaceAllString(out, fmt.Sprintf(`[%2d]`, datetime.Day()))
+	fmt.Println(out)
 }
