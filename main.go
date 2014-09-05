@@ -12,9 +12,10 @@ import (
 )
 
 var (
-	reTimeStart = regexp.MustCompile(`DTSTART:(.+)`)
-	reOrganizer = regexp.MustCompile(`ORGANIZER:(?:MAILTO:)?(.+)`)
-	reSummary   = regexp.MustCompile(`SUMMARY:(.+)`)
+	reTimeStartTz  = regexp.MustCompile(`DTSTART;TZID="([^"]+)":(.+)$`)
+	reTimeStartUtc = regexp.MustCompile(`DTSTART:(.+)Z$`)
+	reOrganizer    = regexp.MustCompile(`ORGANIZER:(?:MAILTO:)?(.+)`)
+	reSummary      = regexp.MustCompile(`SUMMARY:(.+)`)
 )
 
 func main() {
@@ -28,11 +29,23 @@ func main() {
 		}
 
 		switch true {
-		case reTimeStart.MatchString(line):
-			matches := reTimeStart.FindStringSubmatch(line)
-			t, err := time.Parse(`20060102T150405Z`, matches[1])
+		case reTimeStartTz.MatchString(line):
+			matches := reTimeStartTz.FindStringSubmatch(line)
+			t, err := time.Parse(`20060102T150405`, matches[2])
 			if err != nil {
 				panic(err)
+			}
+
+			tz := matches[1]
+
+			showCal(t)
+
+			fmt.Printf("Time :: %s (in <%s>)\n", t.Format("15:04"), tz)
+		case reTimeStartUtc.MatchString(line):
+			matches := reTimeStartUtc.FindStringSubmatch(line)
+			t, err := time.Parse(`20060102T150405Z`, matches[1])
+			if err != nil {
+				continue
 			}
 
 			showCal(t)
