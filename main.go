@@ -43,7 +43,7 @@ func main() {
 			fmt.Printf("Time :: %s (in <%s>)\n", t.Format("15:04"), tz)
 		case reTimeStartUtc.MatchString(line):
 			matches := reTimeStartUtc.FindStringSubmatch(line)
-			t, err := time.Parse(`20060102T150405Z`, matches[1])
+			t, err := time.Parse(`20060102T150405`, matches[1])
 			if err != nil {
 				continue
 			}
